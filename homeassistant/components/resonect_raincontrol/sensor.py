@@ -7,6 +7,9 @@ import random
 
 import voluptuous as vol
 
+from datetime import timedelta
+from collections import deque
+
 from homeassistant.components import mqtt
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.core import HomeAssistant, callback
@@ -20,9 +23,25 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     """Set up the sensor platform."""
     flow_sensor_1 = MqttSensor(hass, "Water Flow 1", TOPIC, "flow1")
     flow_sensor_2 = MqttSensor(hass, "Water Flow 2", TOPIC, "flow2")
-    current_sensor = MqttSensor(hass, "Current", TOPIC, "current")
+    current_sensor = MqttSensor(hass, "UV Lamp Current", TOPIC, "current")
+    power_sensor = MqttSensor(hass, "UV Lamp Power", TOPIC, "current")
+    cumulative_flow_sensor_1 = CumulativeFlowSensor(
+        hass, "Cumulative Water Flow 1", TOPIC, "flow1"
+    )
+    cumulative_flow_sensor_2 = CumulativeFlowSensor(
+        hass, "Cumulative Water Flow 2", TOPIC, "flow2"
+    )
+
     async_add_entities(
-        [flow_sensor_1, flow_sensor_2, current_sensor], update_before_add=True
+        [
+            flow_sensor_1,
+            flow_sensor_2,
+            current_sensor,
+            power_sensor,
+            cumulative_flow_sensor_1,
+            cumulative_flow_sensor_2,
+        ],
+        update_before_add=True,
     )
 
 
@@ -59,7 +78,10 @@ class MqttSensor(SensorEntity):
                 flow = payload_dict.get(self._flow_parameter)
 
                 # Update the state of the sensor (e.g., using flow1 for this example)
-                self._state = flow
+                if self._name == ("UV Lamp Power"):
+                    self._state = flow * 230
+                else:
+                    self._state = flow
 
                 # Optionally, update other entities if needed
                 # hass.states.async_set(entity_flow2, flow2)
@@ -81,3 +103,46 @@ class MqttSensor(SensorEntity):
         """Unsubscribe from MQTT events when removed from hass."""
         if self._unsubscribe is not None:
             self._unsubscribe()
+
+
+class CumulativeFlowSensor(MqttSensor):
+    """Representation of a sensor that accumulates water flow over 1 hour."""
+
+    def __init__(self, hass, name, topic, parameter):
+        super().__init__(hass, name, topic, parameter)
+        self._cumulative_flow = 0
+        self._hourly_flow = deque(maxlen=3600)  # Store 3600 seconds of data
+        self._last_update = None
+
+    @property
+    def state(self):
+        """Return the cumulative state of the sensor."""
+        return self._cumulative_flow
+
+    async def async_added_to_hass(self):
+        """Subscribe to MQTT events and handle hourly accumulation."""
+        await super().async_added_to_hass()
+
+        @callback
+        def message_received(msg):
+            """Handle new MQTT messages for cumulative flow."""
+            try:
+                payload_dict = json.loads(msg.payload)
+                flow = payload_dict.get(self._flow_parameter, 0)
+
+                # Update the deque with the current flow value
+                self._hourly_flow.append(flow)
+
+                # Calculate the cumulative flow over the last hour
+                self._cumulative_flow = sum(self._hourly_flow)
+
+                # Notify Home Assistant of state change
+                self.async_write_ha_state()
+
+            except json.JSONDecodeError:
+                _LOGGER.error("Failed to decode JSON payload from MQTT message")
+
+        # Subscribe to the topic for cumulative flow
+        self._unsubscribe = await mqtt.async_subscribe(
+            self.hass, self._topic, message_received
+        )
