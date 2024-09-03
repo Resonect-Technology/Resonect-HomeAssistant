@@ -2,7 +2,7 @@
   "domain": "resonect_raincontrol",
   "name": "Resonect Rainontrol",
   "codeowners": ["@Resonect-Technology"],
-  "config_flow": false,
+  "config_flow": true,
   "dependencies": ["mqtt"],
   "documentation": "https://www.home-assistant.io/integrations/resonect_raincontrol",
   "homekit": {},
