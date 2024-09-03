@@ -1,9 +1,17 @@
 import json
+import logging
+
 from homeassistant.components.switch import SwitchEntity
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.components import mqtt
+from homeassistant.helpers.event import async_track_time_interval, async_call_later
+
+
+from datetime import timedelta
 
 from .const import DOMAIN, TOPIC
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
@@ -46,3 +54,34 @@ class ValveSwitch(SwitchEntity):
     async def _publish_mqtt(self, message):
         """Publish a message to the MQTT topic."""
         await mqtt.async_publish(self.hass, self._topic, message)
+
+
+async def start_demo_mode(hass: HomeAssistant):
+    """Start the demo mode, periodically opening and closing the valve."""
+
+    @callback
+    async def toggle_valve(now):
+        # Get the switch entity
+        switch = hass.data[DOMAIN].get("valve_switch")
+        if switch.is_on:
+            await switch.async_turn_off()
+            _LOGGER.info("Demo Mode: Valve closed.")
+        else:
+            await switch.async_turn_on()
+            _LOGGER.info("Demo Mode: Valve opened.")
+
+    # Set up periodic valve operation every 30 seconds
+    remove_callback = async_track_time_interval(
+        hass, toggle_valve, timedelta(seconds=30)
+    )
+
+    # Store the callback for stopping the demo mode
+    hass.data[DOMAIN]["stop_demo_mode"] = remove_callback
+
+
+async def stop_demo_mode(hass: HomeAssistant):
+    """Stop the demo mode."""
+    remove_callback = hass.data[DOMAIN].pop("stop_demo_mode", None)
+    if remove_callback:
+        remove_callback()
+        _LOGGER.info("Demo Mode: Stopped.")
