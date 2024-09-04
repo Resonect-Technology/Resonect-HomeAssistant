@@ -28,6 +28,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if entry.options.get("demo_mode"):
         await start_demo_mode(hass)
 
+    # Show a notification when demo mode is enabled
+    create_demo_mode_alert(hass)
+
     return True
 
 
@@ -46,3 +49,17 @@ async def async_update_options(hass: HomeAssistant, entry: ConfigEntry):
     else:
         await stop_demo_mode(hass)
         _LOGGER.info("Demo mode is disabled")
+
+
+def create_demo_mode_alert(hass: HomeAssistant):
+    """Create a persistent notification in Home Assistant for demo mode."""
+    hass.components.persistent_notification.create(
+        "Je potřeba vyměnit UV lampu.",
+        title="Nutnost výměny UV lampy",
+        notification_id="demo_mode_uv",
+    )
+    hass.components.persistent_notification.create(
+        "Je třeba vyměnit filtry.",
+        title="Nutnost výměny filtrů",
+        notification_id="demo_mode_filter",
+    )

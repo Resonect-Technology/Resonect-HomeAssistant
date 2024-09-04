@@ -12,7 +12,9 @@ from collections import deque
 
 from homeassistant.components import mqtt
 from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor.const import SensorDeviceClass
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.const import PERCENTAGE, VOLUME
 
 from .const import DOMAIN, TOPIC
 
@@ -21,15 +23,15 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     """Set up the sensor platform."""
-    flow_sensor_1 = MqttSensor(hass, "Water Flow 1", TOPIC, "flow1")
-    flow_sensor_2 = MqttSensor(hass, "Water Flow 2", TOPIC, "flow2")
-    current_sensor = MqttSensor(hass, "UV Lamp Current", TOPIC, "current")
-    power_sensor = MqttSensor(hass, "UV Lamp Power", TOPIC, "current")
+    flow_sensor_1 = MqttSensor(hass, "Water Flow 1", TOPIC, "flow1", 0)
+    flow_sensor_2 = MqttSensor(hass, "Water Flow 2", TOPIC, "flow2", 0)
+    current_sensor = MqttSensor(hass, "UV Lamp Current", TOPIC, "current", 1)
+    power_sensor = MqttSensor(hass, "UV Lamp Power", TOPIC, "current", 2)
     cumulative_flow_sensor_1 = CumulativeFlowSensor(
-        hass, "Cumulative Water Flow 1", TOPIC, "flow1"
+        hass, "Cumulative Water Flow 1", TOPIC, "flow1", 3
     )
     cumulative_flow_sensor_2 = CumulativeFlowSensor(
-        hass, "Cumulative Water Flow 2", TOPIC, "flow2"
+        hass, "Cumulative Water Flow 2", TOPIC, "flow2", 3
     )
 
     async_add_entities(
@@ -48,7 +50,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
 class MqttSensor(SensorEntity):
     """Representation of a sensor."""
 
-    def __init__(self, hass, name, topic, parameter):
+    def __init__(self, hass, name, topic, parameter, device_class):
         self.hass = hass
         self._unique_id = f"{DOMAIN}_{name.lower().replace(' ', '_')}"
         self._name = name
@@ -56,6 +58,14 @@ class MqttSensor(SensorEntity):
         self._topic = topic
         self._unsubscribe = None
         self._flow_parameter = parameter
+        if device_class == 0:
+            self.native_unit_of_measurement = "l"
+        elif device_class == 1:
+            self.native_unit_of_measurement = "A"
+        elif device_class == 2:
+            self.native_unit_of_measurement = "W"
+        elif device_class == 3:
+            self.native_unit_of_measurement = "l/h"
 
     @property
     def name(self):
@@ -108,8 +118,8 @@ class MqttSensor(SensorEntity):
 class CumulativeFlowSensor(MqttSensor):
     """Representation of a sensor that accumulates water flow over 1 hour."""
 
-    def __init__(self, hass, name, topic, parameter):
-        super().__init__(hass, name, topic, parameter)
+    def __init__(self, hass, name, topic, parameter, device_class):
+        super().__init__(hass, name, topic, parameter, device_class)
         self._cumulative_flow = 0
         self._hourly_flow = deque(maxlen=3600)  # Store 3600 seconds of data
         self._last_update = None
