@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 
@@ -100,18 +101,17 @@ class DemoSwitch(SwitchEntity):
         """Start the demo mode, periodically opening and closing the valve."""
 
         @callback
-        async def toggle_valve(now):
+        async def clean_valve(now):
             """Toggle the valve switch on and off in demo mode."""
-            if self._valve_switch.is_on:
-                await self._valve_switch.async_turn_off()
-                _LOGGER.info("Demo Mode: Valve closed.")
-            else:
-                await self._valve_switch.async_turn_on()
-                _LOGGER.info("Demo Mode: Valve opened.")
+            await self._valve_switch.async_turn_on()
+            await asyncio.sleep(5)
+            await self._valve_switch.async_turn_off()
+
+            _LOGGER.info("Demo Mode: Valve cleaned.")
 
         # Start the interval to toggle the valve every 30 seconds
         self._remove_callback = async_track_time_interval(
-            self.hass, toggle_valve, timedelta(seconds=30)
+            self.hass, clean_valve, timedelta(seconds=30)
         )
 
         _LOGGER.info("Demo Mode: Started, toggling every 30 seconds.")
