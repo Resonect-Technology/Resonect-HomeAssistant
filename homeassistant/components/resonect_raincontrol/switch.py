@@ -7,6 +7,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.components import mqtt
 from homeassistant.helpers.event import async_track_time_interval, async_call_later
 
+from .button import ValveCleanButton
 
 from datetime import timedelta
 
@@ -19,6 +20,9 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     """Set up the switch platform."""
     switch = ValveSwitch(hass, "Valve Switch", "api/v1/valve")
     demo_switch = DemoSwitch(hass, "Demo Mode", "api/v1/demo", switch)
+
+    hass.data[DOMAIN]["valve_switch"] = switch
+
     async_add_entities([switch, demo_switch], update_before_add=True)
 
 

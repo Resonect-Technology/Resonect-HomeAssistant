@@ -20,7 +20,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _LOGGER.info("Setting up My Integration from config entry")
 
     await hass.config_entries.async_forward_entry_setup(entry, "switch")
-
+    await hass.config_entries.async_forward_entry_setup(entry, "button")
     await hass.config_entries.async_forward_entry_setup(entry, "sensor")
 
     # Show a notification when demo mode is enabled
@@ -32,6 +32,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Handle removal of an entry."""
     await hass.config_entries.async_forward_entry_unload(entry, "switch")
+    await hass.config_entries.async_forward_entry_unload(entry, "button")
     await hass.config_entries.async_forward_entry_unload(entry, "sensor")
 
     return True
