@@ -1,6 +1,6 @@
 {
   "domain": "resonect_raincontrol",
-  "name": "Resonect Rainontrol",
+  "name": "RainControl",
   "codeowners": ["@Resonect-Technology"],
   "config_flow": true,
   "dependencies": ["mqtt"],

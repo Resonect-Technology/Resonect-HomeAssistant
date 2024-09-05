@@ -17,7 +17,8 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     """Set up the switch platform."""
     switch = ValveSwitch(hass, "Valve Switch", "api/v1/valve")
-    async_add_entities([switch], update_before_add=True)
+    demo_switch = DemoSwitch(hass, "Demo Mode", "api/v1/demo", switch)
+    async_add_entities([switch, demo_switch], update_before_add=True)
 
 
 class ValveSwitch(SwitchEntity):
@@ -62,32 +63,62 @@ class ValveSwitch(SwitchEntity):
         await mqtt.async_publish(self.hass, topic, message)
 
 
-async def start_demo_mode(hass: HomeAssistant):
-    """Start the demo mode, periodically opening and closing the valve."""
+class DemoSwitch(SwitchEntity):
+    """Representation of a switch."""
 
-    @callback
-    async def toggle_valve(now):
-        # Get the switch entity
-        switch = hass.data[DOMAIN].get("valve_switch")
-        if switch.is_on:
-            await switch.async_turn_off()
-            _LOGGER.info("Demo Mode: Valve closed.")
-        else:
-            await switch.async_turn_on()
-            _LOGGER.info("Demo Mode: Valve opened.")
+    def __init__(self, hass, name, topic, valve_switch):
+        self.hass = hass
+        self._name = name
+        self._state = False
+        self._topic = topic
+        self._valve_switch = valve_switch  # Reference to the valve switch
+        self._remove_callback = None  # For stopping the demo mode loop
 
-    # Set up periodic valve operation every 30 seconds
-    remove_callback = async_track_time_interval(
-        hass, toggle_valve, timedelta(seconds=30)
-    )
+    @property
+    def name(self):
+        """Return the name of the switch."""
+        return self._name
 
-    # Store the callback for stopping the demo mode
-    hass.data[DOMAIN]["stop_demo_mode"] = remove_callback
+    @property
+    def is_on(self):
+        """Return true if the switch is on."""
+        return self._state
 
+    async def async_turn_on(self, **kwargs):
+        """Turn the switch on."""
+        self._state = True
+        await self._start_demo_mode()
+        self.schedule_update_ha_state()
 
-async def stop_demo_mode(hass: HomeAssistant):
-    """Stop the demo mode."""
-    remove_callback = hass.data[DOMAIN].pop("stop_demo_mode", None)
-    if remove_callback:
-        remove_callback()
-        _LOGGER.info("Demo Mode: Stopped.")
+    async def async_turn_off(self, **kwargs):
+        """Turn the switch off."""
+        self._state = False
+        await self._stop_demo_mode()
+        self.schedule_update_ha_state()
+
+    async def _start_demo_mode(self):
+        """Start the demo mode, periodically opening and closing the valve."""
+
+        @callback
+        async def toggle_valve(now):
+            """Toggle the valve switch on and off in demo mode."""
+            if self._valve_switch.is_on:
+                await self._valve_switch.async_turn_off()
+                _LOGGER.info("Demo Mode: Valve closed.")
+            else:
+                await self._valve_switch.async_turn_on()
+                _LOGGER.info("Demo Mode: Valve opened.")
+
+        # Start the interval to toggle the valve every 30 seconds
+        self._remove_callback = async_track_time_interval(
+            self.hass, toggle_valve, timedelta(seconds=30)
+        )
+
+        _LOGGER.info("Demo Mode: Started, toggling every 30 seconds.")
+
+    async def _stop_demo_mode(self):
+        """Stop the demo mode."""
+        if self._remove_callback:
+            self._remove_callback()  # Stop the periodic toggling
+            self._remove_callback = None
+            _LOGGER.info("Demo Mode: Stopped.")
