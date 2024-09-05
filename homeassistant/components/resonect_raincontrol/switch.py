@@ -16,7 +16,7 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     """Set up the switch platform."""
-    switch = ValveSwitch(hass, "Valve Switch", "felix/valve")
+    switch = ValveSwitch(hass, "Valve Switch", "api/v1/valve")
     async_add_entities([switch], update_before_add=True)
 
 
@@ -42,18 +42,24 @@ class ValveSwitch(SwitchEntity):
     async def async_turn_on(self, **kwargs):
         """Turn the switch on."""
         self._state = True
-        await self._publish_mqtt(json.dumps({"valve": True}))
+        await self._publish_mqtt(1, json.dumps({"valve": True}))
         self.schedule_update_ha_state()
 
     async def async_turn_off(self, **kwargs):
         """Turn the switch off."""
         self._state = False
-        await self._publish_mqtt(json.dumps({"valve": False}))
+        await self._publish_mqtt(0, json.dumps({"valve": False}))
         self.schedule_update_ha_state()
 
-    async def _publish_mqtt(self, message):
+    async def _publish_mqtt(self, mode, message):
         """Publish a message to the MQTT topic."""
-        await mqtt.async_publish(self.hass, self._topic, message)
+        topic = self._topic
+        if mode == 0:
+            topic += "/off"
+        elif mode == 1:
+            topic += "/on"
+
+        await mqtt.async_publish(self.hass, topic, message)
 
 
 async def start_demo_mode(hass: HomeAssistant):

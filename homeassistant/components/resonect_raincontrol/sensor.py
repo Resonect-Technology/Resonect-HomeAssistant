@@ -23,10 +23,12 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     """Set up the sensor platform."""
-    flow_sensor_1 = MqttSensor(hass, "Water Flow 1", TOPIC, "flow1", 0)
-    flow_sensor_2 = MqttSensor(hass, "Water Flow 2", TOPIC, "flow2", 0)
-    current_sensor = MqttSensor(hass, "UV Lamp Current", TOPIC, "current", 1)
-    power_sensor = MqttSensor(hass, "UV Lamp Power", TOPIC, "current", 2)
+    flow_sensor_1 = MqttSensor(hass, "Water Flow 1", TOPIC, "waterFlow1", 0)
+    flow_sum_sensor_1 = MqttSensor(hass, "Water Flow Sum 1", TOPIC, "waterFlowSum1", 4)
+    flow_sensor_2 = MqttSensor(hass, "Water Flow 2", TOPIC, "waterFlow2", 0)
+    flow_sum_sensor_2 = MqttSensor(hass, "Water Flow Sum 2", TOPIC, "waterFlowSum2", 4)
+    current_sensor = MqttSensor(hass, "UV Lamp Current", TOPIC, "sensorCurrent", 1)
+    power_sensor = MqttSensor(hass, "UV Lamp Power", TOPIC, "sensorCurrent", 2)
     cumulative_flow_sensor_1 = CumulativeFlowSensor(
         hass, "Cumulative Water Flow 1", TOPIC, "flow1", 3
     )
@@ -42,6 +44,8 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
             power_sensor,
             cumulative_flow_sensor_1,
             cumulative_flow_sensor_2,
+            flow_sum_sensor_1,
+            flow_sum_sensor_2,
         ],
         update_before_add=True,
     )
@@ -66,6 +70,8 @@ class MqttSensor(SensorEntity):
             self.native_unit_of_measurement = "W"
         elif device_class == 3:
             self.native_unit_of_measurement = "l/h"
+        elif device_class == 4:
+            self.native_unit_of_measurement = "l/min"
 
     @property
     def name(self):

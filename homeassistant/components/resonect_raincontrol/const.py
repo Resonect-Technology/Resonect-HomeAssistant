@@ -2,4 +2,4 @@
 
 DOMAIN = "resonect_raincontrol"
 
-TOPIC = "felix/data"
+TOPIC = "api/v1/data"
