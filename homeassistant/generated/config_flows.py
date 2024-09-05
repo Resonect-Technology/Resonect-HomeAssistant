@@ -474,6 +474,7 @@ FLOWS = {
         "renault",
         "renson",
         "reolink",
+        "resonect_raincontrol",
         "rfxtrx",
         "rhasspy",
         "ridwell",

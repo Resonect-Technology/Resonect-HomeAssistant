@@ -5027,6 +5027,12 @@
       "config_flow": false,
       "iot_class": "local_polling"
     },
+    "resonect_raincontrol": {
+      "name": "Resonect Rainontrol",
+      "integration_type": "hub",
+      "config_flow": true,
+      "iot_class": "local_push"
+    },
     "rest": {
       "name": "RESTful",
       "integration_type": "hub",
